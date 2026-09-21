@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="douyin_browser_title">抖音网页解析</string>
+    <string name="douyin_browser_setting">显示抖音解析网页</string>
+    <string name="douyin_browser_settings_open">网页显示设置</string>
+    <string name="douyin_browser_cancel">取消本条解析</string>
+    <string name="douyin_browser_waiting">正在读取作品 · %1$d 秒\n如页面要求验证，请在下方完成</string>
+    <string name="app_name">视频链接解析</string>
+    <string name="page_title">让分享链接\n变成作品信息。</string>
+    <string name="page_subtitle">抖音 · 快手 · 哔哩哔哩</string>
+    <string name="input_label">分享链接或文案</string>
+    <string name="input_hint">把包含作品链接的分享文案粘贴到这里</string>
+    <string name="paste">粘贴并解析</string>
+    <string name="parse">解析</string>
+    <string name="reparse">重新解析</string>
+    <string name="clear_link">清空链接</string>
+    <string name="ready">粘贴或输入分享文案后点击解析</string>
+    <string name="loading">正在读取公开作品信息…</string>
+    <string name="parse_percent_value">%1$d%%</string>
+    <string name="settings">设置</string>
+    <string name="batch_parse">批量解析</string>
+    <string name="batch_preview_setting">批量解析后预览视频</string>
+    <string name="batch_clear_on_return_setting">返回主页时是否清空批量解析内容</string>
+    <string name="batch_draft_save_failed">批量内容暂时无法保存，请稍后重试</string>
+    <string name="batch_scroll_top">回到顶部</string>
+    <string name="batch_scroll_bottom">到达底部</string>
+    <string name="batch_parse_setting">批量解析解析按键</string>
+    <string name="batch_reparse_setting">批量解析重新解析按键</string>
+    <string name="batch_clear_setting">批量解析清空链接按键</string>
+    <string name="switch_on">ON</string>
+    <string name="switch_off">OFF</string>
+    <string name="batch_parse_all">一键解析</string>
+    <string name="batch_download_all">一键下载</string>
+    <string name="batch_clear_all">一键清空</string>
+    <string name="batch_entry_label">链接 %1$d</string>
+    <string name="batch_count">%1$d/10</string>
+    <string name="batch_count_description">已打开 %1$d 个文本框，最多 10 个，点击选择</string>
+    <string name="batch_delete_selected">删除</string>
+    <string name="batch_select_all">全选</string>
+    <string name="batch_deselect_all">取消全选</string>
+    <string name="batch_cancel_selection">取消</string>
+    <string name="batch_select_video">视频 %1$d</string>
+    <string name="batch_choose_video">请先选择要下载的视频</string>
+    <string name="batch_selection_setting">批量解析选择设置</string>
+    <string name="batch_selection_type">选择对象</string>
+    <string-array name="batch_selection_options">
+        <item>优先选择视频</item>
+        <item>每次询问选择类型</item>
+        <item>视频与文本框同删除</item>
+    </string-array>
+    <string-array name="batch_selection_types">
+        <item>文本框</item>
+        <item>视频</item>
+    </string-array>
+    <string-array name="batch_selection_help">
+        <item>有已解析视频时，点击顶部计数器直接选择视频；尚未解析视频时选择文本框。删除视频只清除解析结果，保留链接。已下载到手机的文件不会删除。</item>
+        <item>每次点击顶部计数器，先选择“文本框”或“视频”。选择文本框时，删除整张卡片及其中的解析结果；选择视频时只删除解析结果，保留链接。已下载到手机的文件不会删除。</item>
+        <item>有已解析视频时直接选择视频，删除选中视频时同时删除对应的文本框，你粘贴的链接也会消失。尚未解析视频时选择文本框。未选中的内容会保留，已下载到手机的文件不会删除。</item>
+    </string-array>
+    <string name="batch_help_symbol">?</string>
+    <string name="batch_help_description">长按查看“%1$s”的说明</string>
+    <string name="batch_limit">最多添加 10 个链接</string>
+    <string name="batch_empty_content">内容不可为空</string>
+    <string name="batch_similar_links_confirm">检测到相似链接是否继续解析</string>
+    <string name="batch_similar_links_group">%1$s相似</string>
+    <string name="batch_yes">是</string>
+    <string name="batch_no">否</string>
+    <string name="batch_no_videos">请先解析视频链接</string>
+    <string name="batch_parsing_item">正在解析 %1$d/%2$d</string>
+    <string name="batch_downloading_item">正在下载 %1$d/%2$d</string>
+    <string name="batch_operation_complete">处理完成：成功 %1$d 项，失败 %2$d 项</string>
+    <string name="batch_video_result">%1$s · 视频\n%2$s</string>
+    <string name="batch_video_only">此操作仅限与视频批量解析</string>
+    <string name="video_retention_label">当解析完视频下一条链接是图文</string>
+    <string-array name="video_retention_options">
+        <item>清除解析的视频内容</item>
+        <item>保存解析的视频内容</item>
+    </string-array>
+    <string name="result_ready">解析完成</string>
+    <string name="input_empty">请先粘贴一条作品分享链接</string>
+    <string name="clipboard_empty">剪贴板中没有可用的文字</string>
+    <string name="clipboard_unavailable">暂时无法读取剪贴板，请长按输入框粘贴</string>
+    <string name="parse_failed">暂时无法解析，请检查链接后重试</string>
+    <string name="cover_description">视频封面</string>
+    <string name="cover_missing">未提供封面</string>
+    <string name="cover_loading">正在加载封面…</string>
+    <string name="cover_failed">封面加载失败，点击重试</string>
+    <string name="preview_play">播放视频</string>
+    <string name="preview_pause">暂停视频</string>
+    <string name="preview_time_initial">0:00 / 0:00</string>
+    <string name="preview_failed">视频预览失败，可点击播放键重试</string>
+    <string name="copied">视频链接已复制</string>
+    <string name="open_original">查看原视频</string>
+    <string name="copy_video_url">复制视频链接</string>
+    <string name="browser_missing">没有可打开此链接的浏览器</string>
+    <string name="download_later">下载视频(mp4)</string>
+    <string name="download_running">正在下载…</string>
+    <string name="download_cover">下载视频封面</string>
+    <string name="cover_download_running">正在下载视频封面…</string>
+    <string name="cover_download_failed">视频封面下载失败</string>
+    <string name="download_unavailable">此结果暂时不能自动生成完整 MP4</string>
+    <string name="storage_permission_needed">Android 8/9 需要存储权限才能保存到下载目录</string>
+    <string name="storage_permission_denied">未获得存储权限，无法保存视频</string>
+    <string name="download_complete">下载完成</string>
+    <string name="download_saved_path">文件位置：%1$s</string>
+    <string name="download_failed">下载失败</string>
+    <string name="footer">仅解析公开链接。需要登录或验证的作品可能无法读取。</string>
+    <string name="author_value">作者：%1$s</string>
+    <string name="duration_value">时长：%1$s</string>
+    <string name="unknown">未提供</string>
+    <string name="image_description">解析出的图片</string>
+    <string name="developer_watermark">由@UMG_gudian114开发</string>
+    <string name="caption_hint">文案</string>
+    <string name="copy_caption">复制</string>
+    <string name="caption_copied">文案已复制</string>
+    <string name="back_description">返回</string>
+    <string name="download_image">下载图片</string>
+    <string name="view_image">查看图片</string>
+    <string name="image_load_failed">图片加载失败</string>
+    <string name="image_download_running">正在下载…</string>
+    <string name="image_download_failed">图片下载失败</string>
+    <string name="image_storage_permission_needed">Android 8/9 需要存储权限才能保存图片</string>
+    <string name="image_storage_permission_denied">未获得存储权限，无法保存图片</string>
+    <string name="view_error_details">查看错误详情</string>
+    <string name="error_details_title">解析错误详情</string>
+    <string name="copy_error_details">复制错误详情</string>
+    <string name="error_details_copied">错误详情已复制</string>
+    <string name="announcement_title">公告</string>
+    <string name="announcement_message">本项目为开源，不收取任何费用，如果你是花钱买到的说明你被骗了\n\n1、开源项目不构成任何商业性质，用户在个人使用时造成侵权与开发者无关\n\n2、如果解析时出现长时间未响应，请自行在设置打开“显示抖音解析网页”拉起网页后认证</string>
+    <string name="announcement_close">关闭</string>
+    <string name="announcement_never_show">不再显示</string>
+</resources>

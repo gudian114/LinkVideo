@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="256dp"
+    android:orientation="vertical"
+    android:padding="24dp">
+    <ScrollView
+        android:id="@+id/announcement_body_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="false"
+        android:scrollbars="vertical">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/announcement_message"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:lineSpacingExtra="6dp" />
+    </ScrollView>
+    <LinearLayout
+        android:id="@+id/announcement_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <CheckBox
+            android:id="@+id/announcement_never_show"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minHeight="48dp"
+            android:text="@string/announcement_never_show"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp" />
+        <Button
+            android:id="@+id/announcement_close"
+            style="@style/InputGridButton"
+            android:layout_width="96dp"
+            android:layout_height="wrap_content"
+            android:background="@null"
+            android:minHeight="48dp"
+            android:stateListAnimator="@null"
+            android:textColor="@color/accent"
+            android:text="@string/announcement_close" />
+    </LinearLayout>
+</LinearLayout>

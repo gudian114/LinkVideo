@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/batch_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:focusableInTouchMode="true"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:background="@color/surface">
+        <ImageButton
+            android:id="@+id/batch_back"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_gravity="start|center_vertical"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/back_description"
+            android:padding="14dp"
+            android:src="@drawable/ic_back" />
+        <LinearLayout
+            android:id="@+id/batch_normal_header"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginStart="56dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/batch_parse"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp" />
+            <Button
+                android:id="@+id/batch_count"
+                style="@style/BatchToolbarButton"
+                android:layout_width="wrap_content"
+                android:layout_height="56dp"
+                android:minWidth="56dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp" />
+            <ImageButton
+                android:id="@+id/batch_settings"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/settings"
+                android:padding="16dp"
+                android:src="@drawable/ic_settings" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/batch_selection_header"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginStart="56dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+            <Button
+                android:id="@+id/batch_delete_selected"
+                style="@style/BatchToolbarButton"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="@string/batch_delete_selected" />
+            <Button
+                android:id="@+id/batch_select_all"
+                style="@style/BatchToolbarButton"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1.4"
+                android:text="@string/batch_select_all" />
+            <Button
+                android:id="@+id/batch_cancel_selection"
+                style="@style/BatchToolbarButton"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="@string/batch_cancel_selection" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+    <ScrollView
+        android:id="@+id/batch_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:fillViewport="true">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:paddingBottom="128dp">
+            <LinearLayout
+                android:id="@+id/batch_entries"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+            <Button
+                android:id="@+id/batch_parse_all_button"
+                style="@style/InputBlueButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/batch_parse_all" />
+            <Button
+                android:id="@+id/batch_download_all_button"
+                style="@style/InputGreenButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/batch_download_all" />
+            <Button
+                android:id="@+id/batch_clear_all_button"
+                style="@style/InputRedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/batch_clear_all" />
+            <TextView
+                android:id="@+id/batch_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:accessibilityLiveRegion="polite"
+                android:text="@string/ready"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </ScrollView>
+    <LinearLayout
+        android:layout_width="48dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|bottom"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="16dp"
+        android:orientation="vertical">
+        <ImageButton
+            android:id="@+id/batch_to_top"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/scroll_jump_background"
+            android:contentDescription="@string/batch_scroll_top"
+            android:elevation="3dp"
+            android:padding="12dp"
+            android:rotation="180"
+            android:src="@drawable/ic_jump_down"
+            android:visibility="invisible" />
+        <ImageButton
+            android:id="@+id/batch_to_bottom"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/scroll_jump_background"
+            android:contentDescription="@string/batch_scroll_bottom"
+            android:elevation="3dp"
+            android:padding="12dp"
+            android:src="@drawable/ic_jump_down"
+            android:visibility="invisible" />
+    </LinearLayout>
+    </FrameLayout>
+</LinearLayout>
