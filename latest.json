@@ -1,0 +1,11 @@
+﻿{
+    "schemaVersion":  1,
+    "packageName":  "com.linkvideo.parser",
+    "versionCode":  25,
+    "versionName":  "0.25.0",
+    "minSdk":  26,
+    "apkUrl":  "https://github.com/gudian114/LinkVideo/releases/download/v0.25.0/LinkVideo-v0.25.apk",
+    "sizeBytes":  267735,
+    "sha256":  "ec8c4d9a047a8defee6abbe34cd2c57af7b1a0de74557e3a6411833dd8552e81",
+    "releaseNotes":  "Adds secure in-app updates from GitHub Releases with release notes, download progress, cancellation, retry, integrity checks, and signer verification."
+}
