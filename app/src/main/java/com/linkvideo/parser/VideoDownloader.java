@@ -1,18 +1,13 @@
 package com.linkvideo.parser;
 
 import android.content.ContentResolver;
-import android.content.ContentValues;
 import android.content.Context;
-import android.database.Cursor;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.media.MediaMuxer;
 import android.net.Uri;
-import android.os.Build;
-import android.os.Environment;
 import android.os.ParcelFileDescriptor;
-import android.provider.MediaStore;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -34,10 +29,10 @@ public final class VideoDownloader {
         public final String displayName;
         public final String displayPath;
 
-        DownloadedFile(Uri uri, String displayName) {
+        DownloadedFile(Uri uri, String displayName, String folder) {
             this.uri = uri;
             this.displayName = displayName;
-            this.displayPath = "下载/拾链/" + displayName;
+            this.displayPath = PublicDownloadStore.displayPath(folder, displayName);
         }
     }
 
@@ -46,9 +41,10 @@ public final class VideoDownloader {
     public static DownloadedFile download(Context context, VideoResult result, Progress progress) throws Exception {
         DownloadPlan plan = DownloadPlan.create(result);
         ContentResolver resolver = context.getContentResolver();
-        String requestedName = safeName(result.title) + ".mp4";
-        Uri output = createOutput(context, resolver, requestedName, "video/mp4", false);
-        if (output == null) throw new Exception("无法在系统下载目录中创建文件");
+        PublicDownloadStore.CreatedFile created = PublicDownloadStore.create(context,
+                PublicDownloadStore.FOLDER_VIDEO, ".mp4", "video/mp4", false);
+        if (created == null) throw new Exception("无法在系统下载目录中创建文件");
+        Uri output = created.uri;
         try {
             if (plan.requiresMux()) {
                 File video = downloadTemp(context, plan.video, progress, "正在下载 B站 H.264 画面…");
@@ -69,8 +65,10 @@ public final class VideoDownloader {
                     download(plan.video, target, progress, "正在下载 MP4，请保持应用在前台…");
                 }
             }
-            finishOutput(resolver, output);
-            return new DownloadedFile(output, queryDisplayName(resolver, output, requestedName));
+            PublicDownloadStore.finish(resolver, output);
+            String displayName = PublicDownloadStore.queryDisplayName(
+                    resolver, output, created.requestedName);
+            return new DownloadedFile(output, displayName, created.folder);
         } catch (Exception error) {
             resolver.delete(output, null, null);
             throw error;
@@ -107,10 +105,11 @@ public final class VideoDownloader {
                 long size = connection.getContentLengthLong();
                 if (size > MAX_COVER_BYTES) throw new Exception("视频封面文件过大");
                 String mime = imageMime(connection.getContentType());
-                String requestedName = safeName(result.title) + "-封面" + imageExtension(mime);
                 ContentResolver resolver = context.getContentResolver();
-                Uri output = createOutput(context, resolver, requestedName, mime, true);
-                if (output == null) throw new Exception("无法在系统下载目录中创建封面文件");
+                PublicDownloadStore.CreatedFile created = PublicDownloadStore.create(context,
+                        PublicDownloadStore.FOLDER_COVER, imageExtension(mime), mime, true);
+                if (created == null) throw new Exception("无法在系统下载目录中创建封面文件");
+                Uri output = created.uri;
                 try {
                     try (InputStream input = connection.getInputStream();
                             OutputStream target = resolver.openOutputStream(output, "w")) {
@@ -125,8 +124,10 @@ public final class VideoDownloader {
                             target.write(buffer, 0, count);
                         }
                     }
-                    finishOutput(resolver, output);
-                    return new DownloadedFile(output, queryDisplayName(resolver, output, requestedName));
+                    PublicDownloadStore.finish(resolver, output);
+                    String displayName = PublicDownloadStore.queryDisplayName(
+                            resolver, output, created.requestedName);
+                    return new DownloadedFile(output, displayName, created.folder);
                 } catch (Exception error) {
                     resolver.delete(output, null, null);
                     throw error;
@@ -136,23 +137,6 @@ public final class VideoDownloader {
             }
         }
         throw new Exception("封面地址跳转次数过多");
-    }
-
-    private static Uri createOutput(Context context, ContentResolver resolver, String name,
-                                    String mimeType, boolean image) throws Exception {
-        ContentValues values = new ContentValues();
-        values.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
-        values.put(MediaStore.MediaColumns.MIME_TYPE, mimeType);
-        if (Build.VERSION.SDK_INT >= 29) {
-            values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/拾链");
-            values.put(MediaStore.MediaColumns.IS_PENDING, 1);
-            return resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
-        }
-        File directory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "拾链");
-        if (!directory.exists() && !directory.mkdirs()) throw new Exception("无法创建下载目录");
-        values.put(MediaStore.MediaColumns.DATA, new File(directory, name).getAbsolutePath());
-        return resolver.insert(image ? MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                : MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values);
     }
 
     private static String imageMime(String raw) throws Exception {
@@ -169,13 +153,6 @@ public final class VideoDownloader {
         if ("image/gif".equals(mime)) return ".gif";
         if ("image/avif".equals(mime)) return ".avif";
         return ".jpg";
-    }
-
-    private static void finishOutput(ContentResolver resolver, Uri output) {
-        if (Build.VERSION.SDK_INT < 29) return;
-        ContentValues values = new ContentValues();
-        values.put(MediaStore.MediaColumns.IS_PENDING, 0);
-        resolver.update(output, values, null, null);
     }
 
     private static File downloadTemp(Context context, MediaStream stream, Progress progress,
@@ -243,17 +220,6 @@ public final class VideoDownloader {
 
     private static void update(Progress progress, String message, long downloaded, long total) {
         if (progress != null) progress.update(new DownloadProgress(message, downloaded, total));
-    }
-
-    private static String queryDisplayName(ContentResolver resolver, Uri uri, String fallback) {
-        try (Cursor cursor = resolver.query(uri, new String[]{MediaStore.MediaColumns.DISPLAY_NAME},
-                null, null, null)) {
-            if (cursor != null && cursor.moveToFirst()) {
-                String value = cursor.getString(0);
-                if (value != null && !value.isEmpty()) return value;
-            }
-        } catch (Exception ignored) { }
-        return fallback;
     }
 
     private static URL checkedUrl(String value) throws Exception {
@@ -331,13 +297,6 @@ public final class VideoDownloader {
             extractor.advance();
         }
         extractor.unselectTrack(inputTrack);
-    }
-
-    private static String safeName(String title) {
-        String value = title == null ? "视频" : title.replaceAll("[\\\\/:*?\"<>|\\p{Cntrl}]", "_").trim();
-        if (value.isEmpty()) value = "视频";
-        if (value.length() > 80) value = value.substring(0, 80).trim();
-        return value;
     }
 
     private static void deleteQuietly(File file) {

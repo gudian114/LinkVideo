@@ -3,6 +3,7 @@ package com.linkvideo.parser;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Insets;
 import android.os.Build;
 import android.os.Bundle;
@@ -73,6 +74,8 @@ public final class SettingsActivity extends Activity {
         findViewById(R.id.settings_announcement).setOnClickListener(ignored -> announcement.show());
         announcement.restoreOrShow(state, false);
         findViewById(R.id.settings_back).setOnClickListener(ignored -> finish());
+        findViewById(R.id.check_update).setOnClickListener(ignored ->
+                startActivity(new Intent(this, UpdateActivity.class)));
         applyWindowInsets();
         Spinner choice = findViewById(R.id.video_retention_choice);
         choice.setSelection(shouldKeepVideo(this) ? 1 : 0, false);

@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <application
         android:allowBackup="false"
@@ -13,12 +14,18 @@
         android:theme="@style/Theme.LinkVideo"
         android:usesCleartextTraffic="false"
         tools:targetApi="31">
+        <receiver
+            android:name=".UpdateInstallReceiver"
+            android:exported="false" />
         <activity
             android:name=".ImageViewerActivity"
             android:exported="false"
             android:theme="@style/Theme.LinkVideo.Viewer" />
         <activity
             android:name=".ImageGalleryActivity"
+            android:exported="false" />
+        <activity
+            android:name=".UpdateActivity"
             android:exported="false" />
         <activity
             android:name=".SettingsActivity"
