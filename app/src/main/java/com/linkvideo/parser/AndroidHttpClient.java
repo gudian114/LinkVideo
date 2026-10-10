@@ -43,6 +43,8 @@ import org.json.JSONTokener;
 
 /** Native requests first; one bounded official-page browser session if Douyin needs it. */
 final class AndroidHttpClient implements HttpClient {
+    private static final DouyinRouteState DOUYIN_ROUTES = new DouyinRouteState(
+            SystemClock::elapsedRealtime, 15 * 60_000L);
     private final Activity activity;
     private final HttpFetcher nativeClient = new HttpFetcher();
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -53,20 +55,46 @@ final class AndroidHttpClient implements HttpClient {
     @Override public HttpFetcher.Response get(String url, Map<String, String> headers) throws Exception {
         return nativeClient.get(url, headers);
     }
+    @Override public HttpFetcher.Response get(String url, Map<String, String> headers,
+            long maxDurationMillis) throws Exception {
+        return nativeClient.get(url, headers, maxDurationMillis);
+    }
     @Override public HttpFetcher.Response post(String url, Map<String, String> headers, String body) throws Exception {
         return nativeClient.post(url, headers, body);
     }
+    @Override public HttpFetcher.Response post(String url, Map<String, String> headers, String body,
+            long maxDurationMillis) throws Exception {
+        return nativeClient.post(url, headers, body, maxDurationMillis);
+    }
     @Override public boolean supportsBrowser() { return true; }
     @Override public String browserDiagnostics() { return browserTrace; }
+    @Override public String browserCookies(String origin) {
+        try {
+            String value = CookieManager.getInstance().getCookie(origin);
+            return value == null ? "" : value;
+        } catch (RuntimeException ignored) { return ""; }
+    }
+    @Override public void flushBrowserCookies() {
+        try { CookieManager.getInstance().flush(); }
+        catch (RuntimeException ignored) { }
+    }
+    @Override public DouyinRouteState douyinRouteState() { return DOUYIN_ROUTES; }
 
     @Override public HttpFetcher.Response browserGet(String pageUrl, String requestUrl, Map<String, String> headers) throws Exception {
+        return browserGet(pageUrl, requestUrl, headers, 60_000L);
+    }
+
+    @Override public HttpFetcher.Response browserGet(String pageUrl, String requestUrl,
+            Map<String, String> headers, long maxDurationMillis) throws Exception {
         if (Looper.myLooper() == Looper.getMainLooper()) throw new IllegalStateException("网页读取须在后台等待");
         HttpFetcher.checkInterrupted();
-        Session session = new Session(new DouyinBrowserPage(pageUrl, requestUrl), headers.get("User-Agent"));
+        Session session = new Session(new DouyinBrowserPage(pageUrl, requestUrl),
+                headers.get("User-Agent"), maxDurationMillis);
         browserTrace = "  网页状态：等待主线程启动\n";
         main.post(session::start);
         try {
-            if (!session.done.await(90, TimeUnit.SECONDS)) throw new SocketTimeoutException("抖音网页组件未响应，请查看错误详情");
+            if (!session.done.await(session.maxDurationMillis + 1_000L, TimeUnit.MILLISECONDS))
+                throw new SocketTimeoutException("抖音网页组件未响应，请查看错误详情");
             HttpFetcher.checkInterrupted();
             if (session.error != null) throw session.error;
             return session.response;
@@ -80,6 +108,7 @@ final class AndroidHttpClient implements HttpClient {
         final DouyinBrowserPage page;
         final String userAgent;
         final DouyinPageVisibility visibility;
+        final long maxDurationMillis;
         final CountDownLatch done = new CountDownLatch(1);
         final Runnable poll = this::poll;
         final long started = SystemClock.elapsedRealtime();
@@ -93,12 +122,14 @@ final class AndroidHttpClient implements HttpClient {
         int starts, commits, finishes, pageProgress, polls, replies, httpStatus, networkError, sslError, consoleErrors;
         int requests;
         boolean requestTimeout;
+        boolean verificationUi;
         String ready = "未知", provider = "未知", stage = "启动";
         HttpFetcher.Response response;
         Exception error;
 
-        Session(DouyinBrowserPage page, String userAgent) {
+        Session(DouyinBrowserPage page, String userAgent, long maxDurationMillis) {
             this.page = page; this.userAgent = userAgent;
+            this.maxDurationMillis = Math.max(1L, Math.min(60_000L, maxDurationMillis));
             visibility = new DouyinPageVisibility(SettingsActivity.shouldShowDouyinPage(activity), started);
         }
 
@@ -165,7 +196,9 @@ final class AndroidHttpClient implements HttpClient {
                     @Override public void onPageCommitVisible(WebView view, String url) { commits++; trace(); }
                     @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                         if (!request.isForMainFrame()) return !"https".equalsIgnoreCase(request.getUrl().getScheme());
-                        return !allowed(request.getUrl().toString());
+                        if (allowed(request.getUrl().toString())) return false;
+                        finish(null, new Exception("抖音网页跳转到不受支持的地址"));
+                        return true;
                     }
                     @Override public void onPageFinished(WebView view, String url) {
                         if (cancelled || finished) return;
@@ -255,6 +288,7 @@ final class AndroidHttpClient implements HttpClient {
                     + "，页面进度=" + pageProgress + "，轮询/回调=" + polls + "/" + replies + "，文档=" + ready
                     + "，详情请求=" + requests + "，详情HTTP=" + httpStatus + "，单次超时=" + requestTimeout
                     + "，网络错误=" + networkError + "，证书错误=" + sslError + "，脚本错误数=" + consoleErrors
+                    + "，验证界面=" + (verificationUi ? "检测到" : "未检测")
                     + "，网页显示=" + (displayPage ? "开启" : "关闭") + "\n";
         }
 
@@ -263,7 +297,10 @@ final class AndroidHttpClient implements HttpClient {
             if (activity.isDestroyed() || activity.isFinishing()) { finish(null, new CancellationException()); return; }
             long now = SystemClock.elapsedRealtime();
             long elapsed = now - started;
-            if (visibility.expired(now)) { stage = "等待作品超时"; finish(null, new SocketTimeoutException("抖音网页未能及时返回作品，请查看错误详情")); return; }
+            if (elapsed >= maxDurationMillis) { stage = "总等待超时"; finish(null,
+                    new SocketTimeoutException("抖音解析已达到总等待时间，请查看错误详情")); return; }
+            if (visibility.expired(now)) { stage = "等待作品超时"; finish(null, new SocketTimeoutException(
+                    "抖音网页未能及时返回作品；若页面确实需要操作，请在设置打开“显示抖音解析网页”后重试")); return; }
             if (visibility.shouldReveal(now, activity.hasWindowFocus())) {
                 try { showPage(); }
                 catch (RuntimeException failure) { finish(null, failure); return; }
@@ -296,7 +333,12 @@ final class AndroidHttpClient implements HttpClient {
                         if (document.equals("loading") || document.equals("interactive") || document.equals("complete")) ready = document;
                         visibility.observe(pageProgress, ready, SystemClock.elapsedRealtime());
                         stage = "读取作品数据";
-                        if (result.optBoolean("scriptError")) stage = "网页请求启动失败";
+                        boolean scriptError = result.optBoolean("scriptError");
+                        if (scriptError) stage = "网页请求启动失败";
+                        verificationUi = result.optBoolean("interactionRequired");
+                        long observedAt = SystemClock.elapsedRealtime();
+                        visibility.observeInteraction(verificationUi, observedAt);
+                        if (visibility.shouldReveal(observedAt, activity.hasWindowFocus())) showPage();
                         trace();
                         String body = result.optString("body", "");
                         HttpFetcher.Response latest = new HttpFetcher.Response(page.pageUrl, body,
@@ -318,6 +360,7 @@ final class AndroidHttpClient implements HttpClient {
             error = failure;
             finished = true;
             trace();
+            flushBrowserCookies();
             dispose();
             done.countDown();
         }

@@ -199,7 +199,7 @@ public class VideoParserTest {
                 if (url.contains("web/api/v2/aweme/iteminfo")) return new HttpFetcher.Response(url, "{}");
                 if (url.contains("aweme/v1/web/aweme/detail")) {
                     assertTrue(headers.get("Cookie").contains("passport=x"));
-                    assertTrue(headers.get("Cookie").contains("msToken=share-token"));
+                    assertFalse(headers.get("Cookie").contains("msToken=share-token"));
                     apiCalled[0] = true;
                     return new HttpFetcher.Response(url, "{\"status_code\":0,\"aweme_detail\":" + item + "}");
                 }

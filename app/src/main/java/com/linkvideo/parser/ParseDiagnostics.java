@@ -18,26 +18,53 @@ final class ParseDiagnostics implements HttpClient {
     ParseDiagnostics(HttpClient delegate) { this.delegate = delegate; }
 
     @Override public HttpFetcher.Response get(String url, Map<String, String> headers) throws Exception {
-        return request("GET", url, headers, null, null);
+        return request("GET", url, headers, null, null, 0L);
+    }
+
+    @Override public HttpFetcher.Response get(String url, Map<String, String> headers,
+            long maxDurationMillis) throws Exception {
+        return request("GET", url, headers, null, null, maxDurationMillis);
     }
 
     @Override public HttpFetcher.Response post(String url, Map<String, String> headers, String body) throws Exception {
-        return request("POST", url, headers, body, null);
+        return request("POST", url, headers, body, null, 0L);
+    }
+
+    @Override public HttpFetcher.Response post(String url, Map<String, String> headers, String body,
+            long maxDurationMillis) throws Exception {
+        return request("POST", url, headers, body, null, maxDurationMillis);
     }
 
     @Override public boolean supportsBrowser() { return delegate.supportsBrowser(); }
 
+    @Override public String browserCookies(String origin) { return delegate.browserCookies(origin); }
+
+    @Override public void flushBrowserCookies() { delegate.flushBrowserCookies(); }
+
+    @Override public DouyinRouteState douyinRouteState() { return delegate.douyinRouteState(); }
+
     @Override public HttpFetcher.Response browserGet(String pageUrl, String requestUrl, Map<String, String> headers) throws Exception {
-        return request("网页内核", requestUrl, headers, null, pageUrl);
+        return request("网页内核", requestUrl, headers, null, pageUrl, 60_000L);
     }
 
-    private HttpFetcher.Response request(String method, String url, Map<String, String> headers, String body, String pageUrl) throws Exception {
+    @Override public HttpFetcher.Response browserGet(String pageUrl, String requestUrl,
+            Map<String, String> headers, long maxDurationMillis) throws Exception {
+        return request("网页内核", requestUrl, headers, null, pageUrl, maxDurationMillis);
+    }
+
+    private HttpFetcher.Response request(String method, String url, Map<String, String> headers,
+            String body, String pageUrl, long maxDurationMillis) throws Exception {
         long start = System.nanoTime();
         events.append(method).append(' ').append(stage(url)).append(" 请求ttwid=")
                 .append(hasTtwid(headers.get("Cookie")) ? "有" : "无").append('\n');
         try {
-            HttpFetcher.Response response = pageUrl != null ? delegate.browserGet(pageUrl, url, headers)
-                    : "POST".equals(method) ? delegate.post(url, headers, body) : delegate.get(url, headers);
+            HttpFetcher.Response response = pageUrl != null
+                    ? delegate.browserGet(pageUrl, url, headers, maxDurationMillis)
+                    : "POST".equals(method)
+                    ? (maxDurationMillis > 0L ? delegate.post(url, headers, body, maxDurationMillis)
+                    : delegate.post(url, headers, body))
+                    : (maxDurationMillis > 0L ? delegate.get(url, headers, maxDurationMillis)
+                    : delegate.get(url, headers));
             events.append("  HTTP ").append(response.statusCode).append("，耗时=")
                     .append((System.nanoTime() - start) / 1_000_000).append("ms，字符数=").append(response.body.length())
                     .append("，类型=").append(contentType(response.contentType))

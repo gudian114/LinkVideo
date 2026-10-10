@@ -4,7 +4,6 @@ import java.io.Serializable;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -27,8 +26,7 @@ public final class ImageResource implements Serializable {
         }
         if (safeUrls.isEmpty()) throw new IllegalArgumentException("图片没有可用的 HTTPS 地址");
         this.urls = Collections.unmodifiableList(new ArrayList<>(safeUrls));
-        this.headers = Collections.unmodifiableMap(new LinkedHashMap<>(
-                headers == null ? Collections.emptyMap() : headers));
+        this.headers = SerializableHeaders.copy(headers);
         this.width = Math.max(0, width);
         this.height = Math.max(0, height);
     }

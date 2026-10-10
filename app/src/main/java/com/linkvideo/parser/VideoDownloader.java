@@ -17,6 +17,7 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -85,11 +86,16 @@ public final class VideoDownloader {
             connection.setInstanceFollowRedirects(false);
             connection.setConnectTimeout(15_000);
             connection.setReadTimeout(30_000);
-            connection.setRequestProperty("Accept", "image/*");
-            connection.setRequestProperty("Accept-Encoding", "identity");
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Android) LinkVideo/1.0");
+            Map<String, String> baseHeaders = new LinkedHashMap<>();
+            baseHeaders.put("Accept", "image/*");
+            baseHeaders.put("Accept-Encoding", "identity");
+            baseHeaders.put("User-Agent", "Mozilla/5.0 (Android) LinkVideo/1.0");
             if (result.sourceUrl != null && !result.sourceUrl.isEmpty()) {
-                connection.setRequestProperty("Referer", result.sourceUrl);
+                baseHeaders.put("Referer", result.sourceUrl);
+            }
+            for (Map.Entry<String, String> header : DouyinRuntimeHeaders.forRequest(
+                    current.toString(), baseHeaders).entrySet()) {
+                connection.setRequestProperty(header.getKey(), header.getValue());
             }
             try {
                 int status = connection.getResponseCode();
@@ -177,7 +183,8 @@ public final class VideoDownloader {
             connection.setConnectTimeout(15_000);
             connection.setReadTimeout(30_000);
             connection.setRequestProperty("Accept-Encoding", "identity");
-            for (Map.Entry<String, String> header : stream.headers.entrySet()) {
+            for (Map.Entry<String, String> header : DouyinRuntimeHeaders.forRequest(
+                    current.toString(), stream.headers).entrySet()) {
                 connection.setRequestProperty(header.getKey(), header.getValue());
             }
             try {

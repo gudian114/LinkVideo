@@ -45,7 +45,7 @@ public final class ImageViewerActivity extends Activity {
         TextView status = findViewById(R.id.viewer_status);
         executor.submit(() -> {
             try {
-                ImageLoader.Payload payload = new ImageLoader().load(image);
+                ImageLoader.Payload payload = new ImageLoader(DouyinRuntimeHeaders::forRequest).load(image);
                 Bitmap bitmap = decodeForScreen(payload.bytes);
                 if (bitmap == null) throw new IOException("图片格式不受支持");
                 handler.post(() -> {

@@ -95,7 +95,7 @@ public final class ImageGalleryActivity extends Activity {
                                ProgressBar loading, TextView imageStatus, int targetWidth) {
         executor.submit(() -> {
             try {
-                ImageLoader.Payload payload = new ImageLoader().load(image);
+                ImageLoader.Payload payload = new ImageLoader(DouyinRuntimeHeaders::forRequest).load(image);
                 Bitmap bitmap = decodeSampled(payload.bytes, targetWidth);
                 if (bitmap == null) throw new IOException("图片格式不受支持");
                 handler.post(() -> {

@@ -4,6 +4,7 @@ import org.junit.Test;
 import java.net.SocketTimeoutException;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.*;
 
 public class ParseDiagnosticsTest {
@@ -13,7 +14,7 @@ public class ParseDiagnosticsTest {
         HttpClient fake = new HttpClient() {
             @Override public HttpFetcher.Response get(String url, Map<String, String> headers) throws Exception {
                 if (url.contains("/detail/")) throw new SocketTimeoutException("secret-token " + url);
-                return new HttpFetcher.Response(LINK, "<html>私人文案</html>", "ttwid=secret-cookie");
+                return new HttpFetcher.Response(LINK, "<html>私人文案</html>", "msToken=secret-cookie");
             }
             @Override public HttpFetcher.Response post(String url, Map<String, String> headers, String body) {
                 return new HttpFetcher.Response(url, "{\"status_code\":0,\"redirect_url\":\"https://www.douyin.com/ttwid/union/register/callback/?ticket=secret-ticket\"}", "ttwid=secret-cookie");
@@ -75,6 +76,28 @@ public class ParseDiagnosticsTest {
         assertTrue(trace.report(), trace.report().contains("页面网络失败"));
         assertTrue(trace.report(), trace.report().contains("网络错误=-2"));
         assertFalse(trace.report(), trace.report().contains("secret"));
+    }
+
+    @Test public void browserIdentityIsDelegatedWithoutEnteringDiagnostics() throws Exception {
+        AtomicBoolean flushed = new AtomicBoolean();
+        DouyinRouteState routes = new DouyinRouteState(() -> 0L, 10L);
+        HttpClient browser = new HttpClient() {
+            @Override public HttpFetcher.Response get(String url, Map<String, String> headers) {
+                throw new AssertionError();
+            }
+            @Override public String browserCookies(String origin) {
+                return "ttwid=identity-secret-canary";
+            }
+            @Override public void flushBrowserCookies() { flushed.set(true); }
+            @Override public DouyinRouteState douyinRouteState() { return routes; }
+        };
+        ParseDiagnostics trace = new ParseDiagnostics(browser);
+
+        assertEquals("ttwid=identity-secret-canary", trace.browserCookies("https://www.douyin.com/"));
+        trace.flushBrowserCookies();
+        assertTrue(flushed.get());
+        assertSame(routes, trace.douyinRouteState());
+        assertFalse(trace.report().contains("identity-secret-canary"));
     }
 
     private static ParseFailure failure(VideoParser parser) throws Exception {

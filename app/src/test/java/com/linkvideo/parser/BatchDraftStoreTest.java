@@ -3,6 +3,8 @@ package com.linkvideo.parser;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Collections;
 import org.junit.Rule;
 import org.junit.Test;
@@ -86,6 +88,25 @@ public class BatchDraftStoreTest {
         assertEquals("分享", batch.entry(0).input);
         assertEquals("", batch.entry(0).caption());
         assertEquals("", batch.entry(0).coverDownloadPath);
+    }
+
+    @Test public void savedDraftNeverContainsAuthenticationHeaderValues() throws Exception {
+        File file = new File(folder.getRoot(), "draft");
+        Map<String, String> headers = new LinkedHashMap<>();
+        headers.put("Referer", "https://www.douyin.com/video/1");
+        headers.put("Cookie", "ttwid=secret-draft-canary");
+        BatchState batch = new BatchState();
+        batch.entry(0).acceptVideo(new VideoResult("抖音", "原文", "作者", "",
+                "https://www.douyin.com/video/1", "", 1,
+                Collections.singletonList(new MediaStream("https://video.example/one.mp4", "视频",
+                        "combined", "video/mp4", headers))));
+
+        BatchDraftStore.save(file, batch);
+
+        String bytes = new String(Files.readAllBytes(file.toPath()), StandardCharsets.ISO_8859_1);
+        assertFalse(bytes.contains("secret-draft-canary"));
+        VideoResult restored = (VideoResult) BatchDraftStore.load(file).entry(0).result;
+        assertFalse(restored.streams.get(0).headers.containsKey("Cookie"));
     }
 
     private static VideoResult video() {

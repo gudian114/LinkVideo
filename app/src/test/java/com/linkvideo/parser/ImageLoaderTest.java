@@ -21,7 +21,7 @@ import static org.junit.Assert.assertTrue;
 public class ImageLoaderTest {
     private static final byte[] JPEG = {(byte) 0xff, (byte) 0xd8, (byte) 0xff, 1};
 
-    @Test public void fallsBackAfterForbiddenAndAppliesResourceHeaders() throws Exception {
+    @Test public void fallsBackAfterForbiddenAndAppliesOnlySerializableResourceHeaders() throws Exception {
         Network network = new Network();
         network.reply("https://img.example/first.jpg", 403, "text/plain", "denied".getBytes(UTF_8));
         Reply second = network.reply("https://backup.example/second.jpg", 200, "image/jpeg", JPEG);
@@ -37,7 +37,7 @@ public class ImageLoaderTest {
         assertEquals("https://backup.example/second.jpg", payload.finalUrl);
         assertEquals("https://www.douyin.com/note/1", second.getRequestProperty("Referer"));
         assertEquals("mobile-agent", second.getRequestProperty("User-Agent"));
-        assertEquals("ttwid=token", second.getRequestProperty("Cookie"));
+        assertEquals(null, second.getRequestProperty("Cookie"));
     }
 
     @Test public void followsRelativeHttpsRedirect() throws Exception {

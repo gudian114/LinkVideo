@@ -749,7 +749,8 @@ public final class MainActivity extends Activity {
         coverStatus.setEnabled(false);
         coverTask = coverExecutor.submit(() -> {
             try {
-                Bitmap bitmap = new CoverLoader().load(result, MainActivity::decodeCover);
+                Bitmap bitmap = new CoverLoader(DouyinRuntimeHeaders::forRequest)
+                        .load(result, MainActivity::decodeCover);
                 handler.post(() -> {
                     if (destroyed || resultState.current() != result) {
                         bitmap.recycle();

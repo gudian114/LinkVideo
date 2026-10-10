@@ -259,7 +259,8 @@ final class BatchVideoCard {
         coverStatus.setText(R.string.cover_loading);
         coverTask = covers.submit(() -> {
             try {
-                Bitmap bitmap = new CoverLoader().load(result, BatchVideoCard::decodeCover);
+                Bitmap bitmap = new CoverLoader(DouyinRuntimeHeaders::forRequest)
+                        .load(result, BatchVideoCard::decodeCover);
                 handler.post(() -> {
                     if (disposed || request != coverGeneration) { bitmap.recycle(); return; }
                     cover.setImageBitmap(bitmap);
@@ -292,7 +293,8 @@ final class BatchVideoCard {
             MediaStream stream = MediaSelection.playable(result);
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(stream.url));
             Bundle headers = new Bundle();
-            for (java.util.Map.Entry<String, String> header : stream.headers.entrySet()) headers.putString(header.getKey(), header.getValue());
+            for (java.util.Map.Entry<String, String> header : stream.headers.entrySet())
+                headers.putString(header.getKey(), header.getValue());
             if (!headers.isEmpty()) intent.putExtra(Browser.EXTRA_HEADERS, headers);
             activity.startActivity(intent);
         } catch (ActivityNotFoundException failure) { toast(R.string.browser_missing); }

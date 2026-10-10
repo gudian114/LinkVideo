@@ -101,9 +101,9 @@ public class ParserCancellationTest {
     }
 
     private static String readBody(InputStream body) throws Exception {
-        Method read = HttpFetcher.class.getDeclaredMethod("readLimited", InputStream.class);
+        Method read = HttpFetcher.class.getDeclaredMethod("readLimited", InputStream.class, long.class);
         read.setAccessible(true);
-        try { return (String) read.invoke(null, body); }
+        try { return (String) read.invoke(null, body, Long.MAX_VALUE); }
         catch (InvocationTargetException error) { throw (Exception) error.getCause(); }
     }
 }

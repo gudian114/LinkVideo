@@ -25,24 +25,22 @@ public class DouyinSessionTest {
         assertEquals("保持强者的生活方式", result.title);
     }
 
-    @Test public void failedRegistrationCanStillUseTheExistingSessionForSignedDetail() throws Exception {
+    @Test public void existingBrowserSessionCanStillUseSignedDetail() throws Exception {
         HttpClient http = new HttpClient() {
             @Override public HttpFetcher.Response get(String url, Map<String, String> headers) {
                 if (url.contains("a_bogus=") && "ttwid=existing".equals(headers.get("Cookie"))) {
                     return new HttpFetcher.Response(url, ITEM);
                 }
                 if (url.contains("/aweme/detail/") || url.contains("/web/api/")) return new HttpFetcher.Response(url, "{}");
-                return new HttpFetcher.Response("https://www.iesdouyin.com/share/video/" + ID + "/", "<html></html>", "ttwid=existing");
+                return new HttpFetcher.Response("https://www.iesdouyin.com/share/video/" + ID + "/", "<html></html>");
             }
-            @Override public HttpFetcher.Response post(String url, Map<String, String> headers, String body) throws Exception {
-                throw new IOException("registration offline");
-            }
+            @Override public String browserCookies(String origin) { return "ttwid=existing"; }
         };
         VideoResult result = (VideoResult) new VideoParser(http).parse("https://v.douyin.com/RqrrHs8Lh6A/");
         assertEquals("保持强者的生活方式", result.title);
     }
 
-    @Test public void anonymousRegistrationKeepsSharePageCookies() throws Exception {
+    @Test public void anonymousRegistrationDoesNotSendCrossOriginShareCookies() throws Exception {
         HttpClient http = session("__ac_nonce=share", "ttwid=registered", "", null, CALLBACK);
         VideoResult result = (VideoResult) new VideoParser(http).parse("https://v.douyin.com/RqrrHs8Lh6A/");
         assertEquals("保持强者的生活方式", result.title);
@@ -78,7 +76,7 @@ public class DouyinSessionTest {
                     String cookies = headers.get("Cookie");
                     String expected = callbackCookie.isEmpty() ? registrationCookie : callbackCookie;
                     if (cookies != null && !expected.isEmpty() && cookies.contains(expected)
-                            && (pageCookie.isEmpty() || cookies.contains(pageCookie))) {
+                            && (pageCookie.isEmpty() || !cookies.contains(pageCookie))) {
                         return new HttpFetcher.Response(url, ITEM);
                     }
                     return new HttpFetcher.Response(url, "{}");

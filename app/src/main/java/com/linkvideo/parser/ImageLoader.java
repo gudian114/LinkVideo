@@ -29,9 +29,17 @@ public final class ImageLoader {
     }
 
     private final Connections connections;
+    private final RequestHeaderProvider headerProvider;
 
-    public ImageLoader() { this(url -> (HttpURLConnection) url.openConnection()); }
-    ImageLoader(Connections connections) { this.connections = connections; }
+    public ImageLoader() { this(url -> (HttpURLConnection) url.openConnection(), RequestHeaderProvider.NONE); }
+    ImageLoader(RequestHeaderProvider headerProvider) {
+        this(url -> (HttpURLConnection) url.openConnection(), headerProvider);
+    }
+    ImageLoader(Connections connections) { this(connections, RequestHeaderProvider.NONE); }
+    ImageLoader(Connections connections, RequestHeaderProvider headerProvider) {
+        this.connections = connections;
+        this.headerProvider = headerProvider == null ? RequestHeaderProvider.NONE : headerProvider;
+    }
 
     public Payload load(ImageResource resource) throws IOException {
         if (resource == null) throw new IOException("图片信息不存在");
@@ -58,8 +66,9 @@ public final class ImageLoader {
             connection.setReadTimeout(30_000);
             connection.setRequestProperty("Accept", "image/jpeg,image/png,image/webp,image/gif,image/*;q=0.8");
             connection.setRequestProperty("Accept-Encoding", "identity");
-            if (!containsHeader(headers, "User-Agent")) connection.setRequestProperty("User-Agent", DEFAULT_UA);
-            for (Map.Entry<String, String> header : headers.entrySet()) {
+            Map<String, String> requestHeaders = headerProvider.forRequest(current.toString(), headers);
+            if (!containsHeader(requestHeaders, "User-Agent")) connection.setRequestProperty("User-Agent", DEFAULT_UA);
+            for (Map.Entry<String, String> header : requestHeaders.entrySet()) {
                 if (header.getKey() != null && header.getValue() != null && !header.getValue().isEmpty())
                     connection.setRequestProperty(header.getKey(), header.getValue());
             }

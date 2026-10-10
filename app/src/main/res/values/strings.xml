@@ -126,7 +126,7 @@
     <string name="copy_error_details">复制错误详情</string>
     <string name="error_details_copied">错误详情已复制</string>
     <string name="announcement_title">公告</string>
-    <string name="announcement_message">本项目为开源，不收取任何费用，如果你是花钱买到的说明你被骗了\n\n1、开源项目不构成任何商业性质，用户在个人使用时造成侵权与开发者无关\n\n2、如果解析时出现长时间未响应，请自行在设置打开“显示抖音解析网页”拉起网页后认证</string>
+    <string name="announcement_message">本项目为开源，不收取任何费用，如果你是花钱买到的说明你被骗了\n\n1、开源项目不构成任何商业性质，用户在个人使用时造成侵权与开发者无关\n\n2、如果解析时出现长时间未响应，请自行在设置打开“显示抖音解析网页”拉起网页后认证\n\n3、卸载并重新安装会清除抖音访客身份，首次解析可能需要完成验证；验证后后续作品通常可直接解析，实际有效时间由抖音决定</string>
     <string name="announcement_close">关闭</string>
     <string name="announcement_never_show">不再显示</string>
     <string name="update_check">检查更新</string>

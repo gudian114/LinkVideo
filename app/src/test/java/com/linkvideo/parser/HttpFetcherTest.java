@@ -15,4 +15,16 @@ public class HttpFetcherTest {
         assertTrue(HttpFetcher.isAllowedPageHost("ttwid.bytedance.com"));
         assertFalse(HttpFetcher.isAllowedPageHost("ttwid.bytedance.com.evil.example"));
     }
+
+    @Test public void redirectCookiesStayOnTheExactHost() throws Exception {
+        assertTrue(HttpFetcher.sameCookieOrigin(
+                new java.net.URI("https://v.douyin.com/a"),
+                new java.net.URI("https://V.DOUYIN.COM/b")));
+        assertFalse(HttpFetcher.sameCookieOrigin(
+                new java.net.URI("https://v.douyin.com/a"),
+                new java.net.URI("https://www.douyin.com/b")));
+        assertFalse(HttpFetcher.sameCookieOrigin(
+                new java.net.URI("https://www.douyin.com/a"),
+                new java.net.URI("https://www.iesdouyin.com/b")));
+    }
 }

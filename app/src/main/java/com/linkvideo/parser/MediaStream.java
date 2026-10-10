@@ -1,8 +1,6 @@
 package com.linkvideo.parser;
 
 import java.io.Serializable;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class MediaStream implements Serializable {
@@ -26,6 +24,6 @@ public final class MediaStream implements Serializable {
         this.kind = kind;
         this.mimeType = mimeType;
         this.codecs = codecs == null ? "" : codecs;
-        this.headers = Collections.unmodifiableMap(new LinkedHashMap<>(headers));
+        this.headers = SerializableHeaders.copy(headers);
     }
 }

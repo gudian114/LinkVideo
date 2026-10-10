@@ -1,11 +1,11 @@
 {
-  "schemaVersion": 1,
-  "packageName": "com.linkvideo.parser",
-  "versionCode": 26,
-  "versionName": "0.26.0",
-  "minSdk": 26,
-  "apkUrl": "https://github.com/gudian114/LinkVideo/releases/download/v0.26.0/LinkVideo-v0.26.apk",
-  "sizeBytes": 299868,
-  "sha256": "e3a779888d89700caa3858317c24aab3dbe0697c981bb53fff1c66d076aeba90",
-  "releaseNotes": "下载文件改为保存在公共 Download/图文、Download/视频和 Download/封面目录；统一使用 downloadfile 重名编号；批量解析提示文字居中。"
+    "schemaVersion":  1,
+    "packageName":  "com.linkvideo.parser",
+    "versionCode":  29,
+    "versionName":  "0.29.0",
+    "minSdk":  26,
+    "apkUrl":  "https://github.com/gudian114/LinkVideo/releases/download/v0.29.0/LinkVideo-v0.29.apk",
+    "sizeBytes":  187636,
+    "sha256":  "3037bdea688618d9c837a48c305ccb06eb8aab9027066c165c283b1465d0a2cb",
+    "releaseNotes":  "Adds a startup notice explaining that reinstalling clears the Douyin visitor identity, so the first parse may require verification. Renames the repository README title to Video Parser (Android)."
 }

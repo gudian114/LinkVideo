@@ -146,7 +146,10 @@ public final class VideoParser {
     }
 
     private ParsedResult parseDouyin(String sourceUrl, ProgressListener progress) throws Exception {
-        HttpFetcher.Response initial = http.get(sourceUrl, pageHeaders(MOBILE_UA));
+        DouyinTiming timing = DouyinTiming.start();
+        timing.check("短链跳转");
+        HttpFetcher.Response initial = http.get(sourceUrl, pageHeaders(MOBILE_UA),
+                timing.remainingMillis());
         progress.onProgress(30);
         String resolved = initial.finalUrl;
         String videoId = douyinId(resolved, initial.body);
@@ -155,45 +158,77 @@ public final class VideoParser {
         }
         JSONObject item = findDouyinInPage(initial.body, videoId);
         String shareUrl = resolved;
-        String cookies = initial.cookies;
+        String browserIdentityBefore = http.browserCookies("https://www.douyin.com/");
+        String cookies = isWwwDouyin(resolved)
+                ? HttpFetcher.mergeCookies(initial.cookies, browserIdentityBefore)
+                : browserIdentityBefore;
+        String legacyCookies = isIesDouyin(resolved) ? initial.cookies : "";
         String mediaUserAgent = MOBILE_UA;
         if (item == null) {
             progress.onProgress(45);
             shareUrl = douyinShareUrl(resolved, videoId);
-            HttpFetcher.Response share = http.get(shareUrl, pageHeaders(MOBILE_UA, "Referer", resolved));
-            cookies = HttpFetcher.mergeCookies(cookies, share.cookies);
-            item = findDouyinInPage(share.body, videoId);
+            if (!samePage(resolved, shareUrl)) {
+                timing.check("分享页");
+                HttpFetcher.Response share = http.get(shareUrl,
+                        pageHeaders(MOBILE_UA, "Referer", resolved), timing.remainingMillis());
+                if (isIesDouyin(share.finalUrl)) legacyCookies = share.cookies;
+                else if (isWwwDouyin(share.finalUrl))
+                    cookies = HttpFetcher.mergeCookies(share.cookies, cookies);
+                item = findDouyinInPage(share.body, videoId);
+            }
             progress.onProgress(55);
         }
-        if (item == null && !cookies.isEmpty()) {
-            progress.onProgress(65);
-            item = fetchDouyinApi(videoId, shareUrl, cookies);
-        }
         if (item == null) {
-            progress.onProgress(70);
-            String session = fetchDouyinSession();
-            if (!session.isEmpty()) {
-                cookies = HttpFetcher.mergeCookies(cookies, session);
-                progress.onProgress(75);
-                item = fetchDouyinDetail(videoId, cookies);
-            }
-            if (item == null) {
-                progress.onProgress(85);
-                item = fetchDouyinSignedDetail(videoId, cookies);
-            }
+            progress.onProgress(65);
+            final int[] nativeProgress = {65};
+            final String nativeShareUrl = shareUrl;
+            final String nativeLegacyCookies = legacyCookies;
+            DouyinNativeResolver.Result nativeResult = new DouyinNativeResolver(
+                    http.douyinRouteState(), timing).resolve(cookies, new DouyinNativeResolver.Calls() {
+                private void advance() {
+                    nativeProgress[0] = Math.min(85, nativeProgress[0] + 5);
+                    progress.onProgress(nativeProgress[0]);
+                }
+                @Override public DouyinNativeResolver.Attempt legacy(String value) throws Exception {
+                    advance();
+                    if (nativeLegacyCookies.isEmpty())
+                        return DouyinNativeResolver.Attempt.of(DouyinRouteOutcome.SKIPPED);
+                    return fetchDouyinLegacy(videoId, nativeShareUrl, nativeLegacyCookies,
+                            timing.remainingMillis());
+                }
+                @Override public DouyinNativeResolver.Attempt detail(String value) throws Exception {
+                    advance();
+                    return fetchDouyinDetail(videoId, value, timing.remainingMillis());
+                }
+                @Override public String register() throws Exception {
+                    advance();
+                    return fetchDouyinSession(timing);
+                }
+                @Override public DouyinNativeResolver.Attempt signed(String value) throws Exception {
+                    advance();
+                    return fetchDouyinSignedDetail(videoId, value, timing.remainingMillis());
+                }
+            });
+            item = nativeResult.item;
+            cookies = nativeResult.cookies;
+            if (item != null) mediaUserAgent = DESKTOP_UA;
         }
         if (item == null && http.supportsBrowser()) {
+            timing.check("网页回退");
             progress.onProgress(88);
             String pageUrl = "https://www.douyin.com/" + (shareUrl.contains("/slides/") ? "note/" : "video/") + videoId;
             try {
                 HttpFetcher.Response browser = http.browserGet(pageUrl,
                         "https://www.douyin.com/aweme/v1/web/aweme/detail/?aweme_id=" + videoId + "&aid=1128&app_name=aweme",
-                        headers("User-Agent", DESKTOP_UA));
+                        headers("User-Agent", DESKTOP_UA), timing.remainingMillis());
                 if (browser.statusCode >= 400) throw new HttpFetcher.Failure(browser.statusCode);
                 JSONObject data = new JSONObject(browser.body);
                 if (data.optInt("status_code", -1) == 0) item = findDouyinItem(data, videoId);
                 if (item != null) {
-                    cookies = HttpFetcher.mergeCookies(cookies, browser.cookies);
+                    http.flushBrowserCookies();
+                    String browserIdentityAfter = http.browserCookies("https://www.douyin.com/");
+                    if (DouyinCookieIdentity.changed(browserIdentityBefore, browserIdentityAfter))
+                        http.douyinRouteState().onBrowserIdentityChanged();
                     mediaUserAgent = DESKTOP_UA;
                     shareUrl = pageUrl;
                 }
@@ -203,9 +238,7 @@ public final class VideoParser {
         }
         if (item == null) throw new Exception("抖音页面未返回公开作品数据，可能需要登录或验证");
         progress.onProgress(90);
-        Map<String, String> mediaHeaders = cookies.isEmpty()
-                ? headers("Referer", shareUrl, "User-Agent", mediaUserAgent)
-                : headers("Referer", shareUrl, "User-Agent", mediaUserAgent, "Cookie", cookies);
+        Map<String, String> mediaHeaders = headers("Referer", shareUrl, "User-Agent", mediaUserAgent);
         JSONObject author = item.optJSONObject("author");
         List<ImageResource> images = douyinImages(item, mediaHeaders);
         if (!images.isEmpty()) {
@@ -233,55 +266,82 @@ public final class VideoParser {
                 "公开分享页解析结果；若媒体地址过期，请重新解析。", video == null ? 0 : video.optDouble("duration", 0) / 1000.0, streams);
     }
 
-    private JSONObject fetchDouyinApi(String videoId, String shareUrl, String cookies) {
+    private DouyinNativeResolver.Attempt fetchDouyinLegacy(String videoId, String shareUrl,
+            String cookies, long maxDurationMillis) {
         try {
             String legacy = "https://www.iesdouyin.com/web/api/v2/aweme/iteminfo/?item_ids=" + videoId;
-            JSONObject item = findDouyinApiItem(http.get(legacy, headers("User-Agent", MOBILE_UA,
+            String body = http.get(legacy, headers("User-Agent", MOBILE_UA,
                     "Accept", "application/json, text/plain, */*", "Referer", shareUrl,
-                    "X-Requested-With", "XMLHttpRequest", "Cookie", cookies)).body);
-            if (item != null) return item;
+                    "X-Requested-With", "XMLHttpRequest", "Cookie", cookies), maxDurationMillis).body;
+            JSONObject response = new JSONObject(body);
+            if (response.optInt("status_code", -1) == 11110)
+                return DouyinNativeResolver.Attempt.of(DouyinRouteOutcome.STATUS_11110);
+            JSONObject item = findDouyinApiItem(body);
+            return item == null ? DouyinNativeResolver.Attempt.of(DouyinRouteOutcome.EMPTY)
+                    : DouyinNativeResolver.Attempt.success(item);
         } catch (CancellationException cancelled) { throw cancelled; }
         catch (InterruptedException cancelled) { throw cancellation(cancelled); }
-        catch (Exception error) { recordFailure("旧版详情处理", error); }
-        return fetchDouyinDetail(videoId, cookies);
+        catch (Exception error) {
+            recordFailure("旧版详情处理", error);
+            return DouyinNativeResolver.Attempt.of(outcome(error));
+        }
     }
 
-    private JSONObject fetchDouyinDetail(String videoId, String cookies) {
+    private DouyinNativeResolver.Attempt fetchDouyinDetail(String videoId, String cookies,
+            long maxDurationMillis) {
         try {
             String url = "https://www.douyin.com/aweme/v1/web/aweme/detail/?aweme_id=" + videoId
                     + "&aid=1128&app_name=aweme";
-            String body = http.get(url, headers("User-Agent", MOBILE_UA,
+            String body = http.get(url, headers("User-Agent", DESKTOP_UA,
                     "Accept", "application/json, text/plain, */*", "Referer", "https://www.douyin.com/video/" + videoId,
-                    "X-Requested-With", "XMLHttpRequest", "Cookie", cookies)).body;
-            return findDouyinApiItem(body);
+                    "X-Requested-With", "XMLHttpRequest", "Cookie", cookies), maxDurationMillis).body;
+            JSONObject item = findDouyinApiItem(body);
+            return item == null ? DouyinNativeResolver.Attempt.of(DouyinRouteOutcome.EMPTY)
+                    : DouyinNativeResolver.Attempt.success(item);
         } catch (CancellationException cancelled) { throw cancelled; }
         catch (InterruptedException cancelled) { throw cancellation(cancelled); }
-        catch (Exception error) { recordFailure("普通详情处理", error); return null; }
+        catch (Exception error) {
+            recordFailure("普通详情处理", error);
+            return DouyinNativeResolver.Attempt.of(outcome(error));
+        }
     }
 
-    private JSONObject fetchDouyinSignedDetail(String videoId, String cookies) {
+    private DouyinNativeResolver.Attempt fetchDouyinSignedDetail(String videoId, String cookies,
+            long maxDurationMillis) {
         try {
             String query = "aid=6383&device_platform=webapp&aweme_id=" + videoId;
             String url = "https://www.douyin.com/aweme/v1/web/aweme/detail/?" + query
                     + "&a_bogus=" + URLEncoder.encode(DouyinRequestSignature.sign(query), "UTF-8");
             String body = http.get(url, headers("User-Agent", DouyinRequestSignature.USER_AGENT,
                     "Accept", "application/json, text/plain, */*", "Referer", "https://www.douyin.com/",
-                    "Accept-Language", "zh-CN,zh;q=0.9", "Cookie", cookies)).body;
+                    "Accept-Language", "zh-CN,zh;q=0.9", "Cookie", cookies), maxDurationMillis).body;
             JSONObject response = new JSONObject(body);
-            return response.optInt("status_code", -1) == 0 ? findDouyinItem(response, videoId) : null;
+            JSONObject item = response.optInt("status_code", -1) == 0
+                    ? findDouyinItem(response, videoId) : null;
+            return item == null ? DouyinNativeResolver.Attempt.of(DouyinRouteOutcome.EMPTY)
+                    : DouyinNativeResolver.Attempt.success(item);
         } catch (CancellationException cancelled) { throw cancelled; }
         catch (InterruptedException cancelled) { throw cancellation(cancelled); }
-        catch (Exception error) { recordFailure("签名详情生成或读取", error); return null; }
+        catch (Exception error) {
+            recordFailure("签名详情生成或读取", error);
+            return DouyinNativeResolver.Attempt.of(outcome(error));
+        }
     }
 
-    private String fetchDouyinSession() {
+    private static DouyinRouteOutcome outcome(Exception error) {
+        return error instanceof HttpFetcher.Failure && ((HttpFetcher.Failure) error).statusCode == 403
+                ? DouyinRouteOutcome.FORBIDDEN : DouyinRouteOutcome.NETWORK_FAILURE;
+    }
+
+    private String fetchDouyinSession(DouyinTiming timing) throws Exception {
         try {
             String body = "{\"region\":\"cn\",\"aid\":1128,\"needFid\":false,"
                     + "\"service\":\"www.douyin.com\",\"migrate_source\":0,\"cbUrlProtocol\":\"https\","
                     + "\"app_name\":\"aweme_web\",\"device_platform\":\"web\"}";
             HttpFetcher.Response response = http.post("https://ttwid.bytedance.com/ttwid/union/register/",
                     headers("User-Agent", DESKTOP_UA, "Content-Type", "application/json", "Accept", "*/*",
-                            "Origin", "https://www.douyin.com", "Referer", "https://www.douyin.com/"), body);
+                            "Origin", "https://www.douyin.com", "Referer", "https://www.douyin.com/"),
+                    body, timing.remainingMillis());
             String cookies = response.cookies;
             try {
                 String callback = new JSONObject(response.body).optString("redirect_url", "");
@@ -291,7 +351,8 @@ public final class VideoParser {
                         && (target.getPort() == -1 || target.getPort() == 443)
                         && "/ttwid/union/register/callback/".equals(target.getPath())) {
                     HttpFetcher.Response completed = http.get(callback,
-                            headers("User-Agent", DESKTOP_UA, "Referer", "https://www.douyin.com/", "Cookie", cookies));
+                            headers("User-Agent", DESKTOP_UA, "Referer", "https://www.douyin.com/", "Cookie", cookies),
+                            timing.remainingMillis());
                     cookies = HttpFetcher.mergeCookies(cookies, completed.cookies);
                 }
             } catch (CancellationException cancelled) { throw cancelled; }
@@ -344,6 +405,43 @@ public final class VideoParser {
         String type = path != null && (path.contains("/note/") || path.contains("/slides/")
                 || path.contains("/share/note/")) ? "slides" : "video";
         return "https://www.iesdouyin.com/share/" + type + "/" + videoId + "/";
+    }
+
+    private static boolean samePage(String first, String second) {
+        try {
+            URI left = new URI(first);
+            URI right = new URI(second);
+            return "https".equalsIgnoreCase(left.getScheme())
+                    && "https".equalsIgnoreCase(right.getScheme())
+                    && left.getUserInfo() == null && right.getUserInfo() == null
+                    && left.getPort() == right.getPort()
+                    && left.getHost() != null && left.getHost().equalsIgnoreCase(right.getHost())
+                    && trimTrailingSlash(left.getPath()).equals(trimTrailingSlash(right.getPath()));
+        } catch (Exception ignored) { return false; }
+    }
+
+    private static boolean isIesDouyin(String value) {
+        try {
+            URI uri = new URI(value);
+            return "https".equalsIgnoreCase(uri.getScheme()) && uri.getUserInfo() == null
+                    && "www.iesdouyin.com".equalsIgnoreCase(uri.getHost())
+                    && (uri.getPort() == -1 || uri.getPort() == 443);
+        } catch (Exception ignored) { return false; }
+    }
+
+    private static boolean isWwwDouyin(String value) {
+        try {
+            URI uri = new URI(value);
+            return "https".equalsIgnoreCase(uri.getScheme()) && uri.getUserInfo() == null
+                    && "www.douyin.com".equalsIgnoreCase(uri.getHost())
+                    && (uri.getPort() == -1 || uri.getPort() == 443);
+        } catch (Exception ignored) { return false; }
+    }
+
+    private static String trimTrailingSlash(String path) {
+        String value = path == null || path.isEmpty() ? "/" : path;
+        while (value.length() > 1 && value.endsWith("/")) value = value.substring(0, value.length() - 1);
+        return value;
     }
 
     private ParsedResult parseKuaishou(String sourceUrl, ProgressListener progress) throws Exception {

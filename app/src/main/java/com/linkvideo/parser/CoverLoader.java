@@ -7,6 +7,8 @@ import java.io.InterruptedIOException;
 import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
 import java.net.URL;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.LongSupplier;
 
 /** Fetches a cover independently of the Android bitmap decoder. */
@@ -19,12 +21,23 @@ final class CoverLoader {
 
     private final Connections connections;
     private final LongSupplier clock;
+    private final RequestHeaderProvider headerProvider;
 
-    CoverLoader() { this(url -> (HttpURLConnection) url.openConnection(), System::nanoTime); }
+    CoverLoader() { this(url -> (HttpURLConnection) url.openConnection(), System::nanoTime,
+            RequestHeaderProvider.NONE); }
+
+    CoverLoader(RequestHeaderProvider headerProvider) {
+        this(url -> (HttpURLConnection) url.openConnection(), System::nanoTime, headerProvider);
+    }
 
     CoverLoader(Connections connections, LongSupplier clock) {
+        this(connections, clock, RequestHeaderProvider.NONE);
+    }
+
+    CoverLoader(Connections connections, LongSupplier clock, RequestHeaderProvider headerProvider) {
         this.connections = connections;
         this.clock = clock;
+        this.headerProvider = headerProvider == null ? RequestHeaderProvider.NONE : headerProvider;
     }
 
     <T> T load(VideoResult result, Decoder<T> decoder) throws IOException {
@@ -54,10 +67,14 @@ final class CoverLoader {
             connection.setConnectTimeout(remainingMillis(deadline));
             connection.setReadTimeout(remainingMillis(deadline));
             connection.setInstanceFollowRedirects(false);
-            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36");
-            connection.setRequestProperty("Accept", "image/jpeg,image/png,image/webp,image/*;q=0.8");
-            connection.setRequestProperty("Accept-Encoding", "identity");
-            if (referer != null && !referer.isEmpty()) connection.setRequestProperty("Referer", referer);
+            Map<String, String> base = new LinkedHashMap<>();
+            base.put("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36");
+            base.put("Accept", "image/jpeg,image/png,image/webp,image/*;q=0.8");
+            base.put("Accept-Encoding", "identity");
+            if (referer != null && !referer.isEmpty()) base.put("Referer", referer);
+            for (Map.Entry<String, String> header : headerProvider.forRequest(url.toString(), base).entrySet()) {
+                connection.setRequestProperty(header.getKey(), header.getValue());
+            }
             try {
                 connection.connect();
                 connection.setReadTimeout(remainingMillis(deadline));

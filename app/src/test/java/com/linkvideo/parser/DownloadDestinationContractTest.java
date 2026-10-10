@@ -36,12 +36,12 @@ public class DownloadDestinationContractTest {
         assertTrue(statusView.contains("android:gravity=\"center\""));
     }
 
-    @Test public void v026KeepsOtaEntryAndComponents() throws Exception {
+    @Test public void v029KeepsOtaEntryAndComponents() throws Exception {
         String build = read("app/build.gradle");
         String manifest = read("app/src/main/AndroidManifest.xml");
         String settings = read("app/src/main/res/layout/activity_settings.xml");
-        assertTrue(build.contains("versionCode 26"));
-        assertTrue(build.contains("versionName '0.26.0'"));
+        assertTrue(build.contains("versionCode 29"));
+        assertTrue(build.contains("versionName '0.29.0'"));
         assertTrue(manifest.contains("android.permission.REQUEST_INSTALL_PACKAGES"));
         assertTrue(manifest.contains(".UpdateActivity"));
         assertTrue(manifest.contains(".UpdateInstallReceiver"));

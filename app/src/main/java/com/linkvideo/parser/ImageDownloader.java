@@ -24,7 +24,7 @@ public final class ImageDownloader {
     public static DownloadedFile download(Context context, ImagePostResult post,
                                           ImageResource image, int oneBasedIndex) throws Exception {
         if (context == null || post == null || image == null) throw new Exception("图片信息不存在");
-        ImageLoader.Payload payload = new ImageLoader().load(image);
+        ImageLoader.Payload payload = new ImageLoader(DouyinRuntimeHeaders::forRequest).load(image);
         ImageFormat format = ImageFormat.detect(payload.contentType, payload.finalUrl, payload.bytes);
         ContentResolver resolver = context.getContentResolver();
         PublicDownloadStore.CreatedFile created = PublicDownloadStore.create(context,
